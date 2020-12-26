@@ -10,10 +10,28 @@ var localized String PlayerDisableTele;
 var localized string NoSpaceAbove;
 var Font FirstFont;
 var Pawn player[32];
+var int DisableTarget;
+var int DisableUse;
+var globalconfig int DisableTargetTime;
+var globalconfig int DisableUseTime;
+var localized String DisableForbidden;
+var localized String StillDisabled;
+var localized String DisableSuccess;
 
 replication {
 	reliable if (Role == ROLE_Authority)
 		TargetPRI;
+}
+
+static function string Replace(coerce string source, coerce string search, coerce string replace) {
+	local int pos;
+	
+	pos = InStr(source, search);
+	if (pos >= 0) {
+		source = Left(source, pos) $ replace $ Mid(source, pos + Len(search));
+	}
+	
+	return source;
 }
 
 state Active {
@@ -41,6 +59,26 @@ event Tick (float delta) {
 	if ((Level.Game).bGameEnded) Destroy();
 	bTTargetOut = TargetPawn != None;
 	bHideWeapon = TargetPawn != None;
+}
+
+event Timer() {
+	if (DisableTarget > 0) DisableTarget--;
+	if (DisableUse > 0) DisableUse--;
+}
+
+function DisableTrans() {
+	local string Deny;
+	
+	Deny = "";
+	if (DisableTargetTime <= 0) Deny = DisableForbidden;
+	if (DisableTarget > 0) Deny = Replace(StillDisabled, "%d", DisableTarget);
+	
+	if (Deny == "") {
+		DisableTarget += DisableTargetTime;
+		if (DisableUseTime > 0) DisableUse += DisableUseTime;
+		Deny = Replace(Replace(DisableSuccess, "%d", DisableTarget), "%n", DisableUse);
+	}
+	Pawn(Owner).ClientMessage(Deny);
 }
 
 function Fire(float Value) {
@@ -104,7 +142,7 @@ function SelectTarget() {
 		TargetPRI = P.PlayerReplicationInfo;
 		Owner.PlaySound(FireSound, SLOT_Misc, 4 * Pawn(Owner).SoundDampening);
 		bTTargetOut = True;
-		Pawn(Owner).ClientMessage(Selected @ TargetPRI.PlayerName $ "."); // fall back if tiles not draw by some reason
+		Pawn(Owner).ClientMessage(Replace(Selected, "%p", TargetPRI.PlayerName)); // fall back if tiles not draw by some reason
 	} else {
 		TargetPawn = None;
 		TargetPRI = None;
@@ -129,12 +167,13 @@ function Translocate() {
 		TargetPawn.CollisionRadius * X; // and little at back
 
 	Deny = "";
-	if (TargetPawn.Base != None && TargetPawn.Base.Velocity.Z > 0) Deny = TargetPawn.PlayerReplicationInfo.PlayerName @ PlayerMovesUp;
-	if (TargetPawn.PlayerReplicationInfo.GetPropertyText("bCoopTeleDisable") == "True") Deny = TargetPawn.PlayerReplicationInfo.PlayerName @ PlayerDisableTele;
+	if ((TargetPawn.Base != None && TargetPawn.Base.Velocity.Z > 0) || TargetPawn.Velocity.Z > 0) Deny = PlayerMovesUp;
+	if (TargetPawn.PlayerReplicationInfo.GetPropertyText("bCoopTeleDisable") == "True") Deny = PlayerDisableTele;
+	if (DisableUse > 0) Deny = Replace(StillDisabled, "%d", DisableUse);
 
 	Start = Owner.Location;
 	if (Deny == "") {
-		if (Owner.SetLocation(Dest)) {
+		if (TargetPawn.FastTrace(Dest) && Owner.SetLocation(Dest)) {
 			if (!Owner.Region.Zone.bWaterZone) Owner.SetPhysics(PHYS_Falling);
 			PlayerPawn(Owner).ClientSetRotation(TargetPawn.Rotation.Yaw * rot(0, 1, 0)); // set rotation same as target for Z axis, for allow press back for avoid team fire
 			Owner.Velocity.X = 0;
@@ -144,11 +183,11 @@ function Translocate() {
 			TargetPawn = None;
 			bTTargetOut = False;
 		} else {
-			Deny = NoSpaceAbove @ TargetPawn.PlayerReplicationInfo.PlayerName $ ".";
+			Deny = NoSpaceAbove;
 		}
 	}
 	if (Deny != "") {
-		Pawn(Owner).ClientMessage(TranslocateFailed @ Deny);
+		Pawn(Owner).ClientMessage(TranslocateFailed @ Replace(Deny, "%p", TargetPawn.PlayerReplicationInfo.PlayerName));
 		Owner.PlaySound(AltFireSound, SLOT_Misc, 4 * Pawn(Owner).SoundDampening);
 	}
 }
@@ -303,13 +342,20 @@ simulated function PostRender(Canvas C) {
 defaultproperties {
 	bPointing=False
 	bCanTranslocate=True
-	Selected="Translocate target is"
+	Selected="Translocate target is %p."
 	TranslocateFailed="Translocate failed:"
-	PlayerMovesUp="goes up on lift."
-	PlayerDisableTele="disabled the teleport."
-	NoSpaceAbove="not enough space above"
+	PlayerMovesUp="%p goes up."
+	PlayerDisableTele="%p disabled the teleport."
+	NoSpaceAbove="not enough space above %p."
 	bTTargetOut=False
 	bOwnsCrosshair=True
 	FireSound=Sound'UnrealShare.Eightball.SeekLock'
 	AltFireSound=Sound'UnrealShare.Eightball.SeekLost'
+	DisableTarget=0
+	DisableUse=0
+	DisableTargetTime=30
+	DisableUseTime=30
+	DisableForbidden="The server administrator has forbidden disabling CoopTranslocator."
+	StillDisabled="CoopTranslocator is still disabled. %d seconds left."
+	DisableSuccess="The teleporter is disabled. Other players to you - for %d seconds. You to other players - for %n seconds."
 }

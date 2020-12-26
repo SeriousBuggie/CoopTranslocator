@@ -27,6 +27,7 @@ function ModifyPlayer(Pawn me) {
 			Coop.bHeldItem = true;
 			Weapon(Coop).SetSwitchPriority(me);
 			Coop.AmbientGlow = 0;
+			Coop.SetTimer(1.0, true);
 			
 			// Move CoopTranslocator after Translocator
 			if (me.Inventory == Coop && Coop.Inventory != None && After != None) {
@@ -38,4 +39,19 @@ function ModifyPlayer(Pawn me) {
 	}
 	
 	me.bAlwaysRelevant = True; // fix
+}
+
+function Mutate(string Command, PlayerPawn Sender) {
+	local Inventory Inv;
+	
+	if (Command ~= "cooptrans disable") {
+		for (Inv = Sender.Inventory; Inv != None; Inv = Inv.Inventory) {
+			if (Inv.class == class'CoopTranslocator') {
+				CoopTranslocator(Inv).DisableTrans();
+				break;
+			}
+		}
+	}
+
+	super.Mutate(Command, Sender);
 }
