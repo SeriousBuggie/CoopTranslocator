@@ -44,12 +44,10 @@ function ModifyPlayer(Pawn me) {
 function Mutate(string Command, PlayerPawn Sender) {
 	local Inventory Inv;
 	
-	if (Command ~= "cooptrans disable") {
-		for (Inv = Sender.Inventory; Inv != None; Inv = Inv.Inventory) {
-			if (Inv.class == class'CoopTranslocator') {
-				CoopTranslocator(Inv).DisableTrans();
-				break;
-			}
+	for (Inv = Sender.Inventory; Inv != None; Inv = Inv.Inventory) {
+		if (Inv.class == class'CoopTranslocator') {
+			CoopTranslocator(Inv).Mutate(Command);
+			break;
 		}
 	}
 

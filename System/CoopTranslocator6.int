@@ -1,3 +1,0 @@
-[Public]
-Object=(Name=CoopTranslocator6.CoopTranslocator,Class=Class,MetaClass=Botpack.TournamentWeapon,Description="Cooperative Translocator")
-Object=(Name=CoopTranslocator6.CoopTranslocatorMutator,Class=Class,MetaClass=Engine.Mutator,Description="CoopTranslocator6,Give to each player Cooperative Translocator at start")

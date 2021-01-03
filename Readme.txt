@@ -24,9 +24,9 @@ Difference from original (by Gust):
 8. Set rotation to target.
 9. Place to tele is up and little back target.
 10. Press Fire + Alt fire for return back to previous weapon.
-11. The player can temporarily disable teleportation to himself via the "mutate cooptrans disable" command. The administrator can disable this behavior in UnrealTournament.ini.
+11. The player can disable teleportation to himself via the "mutate cooptrans disable" command. The administrator can disable this behavior in server UnrealTournament.ini.
 If a player has disabled teleportation to himself, then he himself cannot teleport to other players.
-The disable time is set separately. If you specify zero time, the function will be disabled.
+To enable, use the command "mutate cooptrans enable". After the delay, the translocator will be turned on, and you will receive a corresponding message.
 12. And a lot other small improvements.
 
 -=[ Mutator ]=-
@@ -45,8 +45,10 @@ Source can be built with UMake.
 
 You can set options in UnrealTournament.ini:
 
-[CoopTranslocator6.CoopTranslocator]
-DisableTargetTime=30
+[CoopTranslocator7.CoopTranslocator]
+;Mutate command. Use empty string to turn off disable feature.
+Command=cooptrans
+;Delay for use after enable.
 DisableUseTime=30
 
 -=[ Credits ]=-

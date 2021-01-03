@@ -12,11 +12,12 @@ var Font FirstFont;
 var Pawn player[32];
 var int DisableTarget;
 var int DisableUse;
-var globalconfig int DisableTargetTime;
+var globalconfig string Command;
 var globalconfig int DisableUseTime;
 var localized String DisableForbidden;
 var localized String StillDisabled;
 var localized String DisableSuccess;
+var localized String Ready;
 
 replication {
 	reliable if (Role == ROLE_Authority)
@@ -62,22 +63,34 @@ event Tick (float delta) {
 }
 
 event Timer() {
-	if (DisableTarget > 0) DisableTarget--;
-	if (DisableUse > 0) DisableUse--;
+	if (DisableUse > 0) {
+		DisableUse--;
+		if (DisableUse == 0) {
+			Pawn(Owner).ClientMessage(Ready);
+		}
+	}
 }
 
-function DisableTrans() {
+function Mutate(string Cmd) {
 	local string Deny;
 	
 	Deny = "";
-	if (DisableTargetTime <= 0) Deny = DisableForbidden;
-	if (DisableTarget > 0) Deny = Replace(StillDisabled, "%d", DisableTarget);
-	
-	if (Deny == "") {
-		DisableTarget += DisableTargetTime;
-		if (DisableUseTime > 0) DisableUse += DisableUseTime;
-		Deny = Replace(Replace(DisableSuccess, "%d", DisableTarget), "%n", DisableUse);
+	if (Command == "") {
+		Deny = DisableForbidden;
+	} else if (Cmd ~= (Command@"disable")) {
+		DisableTarget = 1;
+		DisableUse = 0;
+		Deny = DisableSuccess;
+	} else if (Cmd ~= (Command@"enable")) {
+		if (DisableTarget == 0) {
+			if (DisableUse == 0) Deny = Ready;
+		} else {
+			DisableTarget = 0;
+			DisableUse = DisableUseTime;
+		}
+		if (Deny == "") Deny = Replace(StillDisabled, "%d", DisableUse);
 	}
+
 	Pawn(Owner).ClientMessage(Deny);
 }
 
@@ -155,6 +168,7 @@ function Translocate() {
 	local Vector X, Y, Z;
 	local Vector Start, Dest;
 	local string Deny;
+	local Inventory Inv;
 	
 	if (TargetPawn == None || TargetPawn.Health < 0) {
 		Owner.PlaySound(AltFireSound, SLOT_Misc, 4 * Pawn(Owner).SoundDampening);
@@ -169,7 +183,16 @@ function Translocate() {
 	Deny = "";
 	if ((TargetPawn.Base != None && TargetPawn.Base.Velocity.Z > 0) || TargetPawn.Velocity.Z > 0) Deny = PlayerMovesUp;
 	if (TargetPawn.PlayerReplicationInfo.GetPropertyText("bCoopTeleDisable") == "True") Deny = PlayerDisableTele;
+	
+	for (Inv = TargetPawn.Inventory; Inv != None; Inv = Inv.Inventory) {
+		if (Inv.class == class'CoopTranslocator' && CoopTranslocator(Inv).DisableTarget > 0) {
+			Deny = PlayerDisableTele;
+			break;
+		}
+	}
+	
 	if (DisableUse > 0) Deny = Replace(StillDisabled, "%d", DisableUse);
+	if (DisableTarget > 0) Deny = DisableSuccess;
 
 	Start = Owner.Location;
 	if (Deny == "") {
@@ -353,9 +376,10 @@ defaultproperties {
 	AltFireSound=Sound'UnrealShare.Eightball.SeekLost'
 	DisableTarget=0
 	DisableUse=0
-	DisableTargetTime=30
+	Command="cooptrans"
 	DisableUseTime=30
 	DisableForbidden="The server administrator has forbidden disabling CoopTranslocator."
-	StillDisabled="CoopTranslocator is still disabled. %d seconds left."
-	DisableSuccess="The teleporter is disabled. Other players to you - for %d seconds. You to other players - for %n seconds."
+	StillDisabled="Your CoopTranslocator will be usable in %d seconds."
+	Ready="Your CoopTranslocator is ready to use."
+	DisableSuccess="The teleporter is disabled."
 }
