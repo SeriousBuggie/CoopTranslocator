@@ -22,7 +22,7 @@ Difference from original (by Gust):
 6. If you can not tele - description provided.
 7. Clean up code.
 8. Set rotation to target.
-9. Place to tele is up and little back target.
+9. The teleportation point is located above the target and slightly behind.
 10. Press Fire + Alt fire for return back to previous weapon.
 11. The player can disable teleportation to himself via the "mutate cooptrans disable" command. The administrator can disable this behavior in server UnrealTournament.ini.
 If a player has disabled teleportation to himself, then he himself cannot teleport to other players.
